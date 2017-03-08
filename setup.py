@@ -1,7 +1,5 @@
 from setuptools import setup, find_packages
 
-import cmaputil
-
 
 with open('README.md') as f:
     readme = f.read()
@@ -16,10 +14,10 @@ pkgs = find_packages(exclude=('examples'))
 
 setup(
     name='cmaputil',
-    version=cmaputil.__version__,
+    version='1.0',
     description='Colormap analysis module.',
     long_description=readme,
-    author=cmaputil.__author__,
+    author='Jamie R. Nunez',
     author_email='jamie.nunez@pnnl.gov',
     url='https://github.com/smcolby/cmaputil',
     license=license,
