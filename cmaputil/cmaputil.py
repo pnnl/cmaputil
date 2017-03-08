@@ -1,15 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Module containing functions to process, evaluate, and manipulate
-colormaps. 
-
-@author: Jamie Nunez
-"""
-
-__author__ = 'Jamie Dunn (jamie.dunn@pnnl.gov)'
-__copyright__ = 'Copyright (c) 2017 PNNL'
-__license__ = 'Battelle Memorial Institute BSD-like license'
-__version__ = '1.0'
  
 #%% Imports
 from math import floor, sqrt, ceil
@@ -421,7 +410,7 @@ def plot_3D_colormap(jab, minJ, maxJ, name=None, maprevolve=False):
     m = np.copy(jab)
     
     # Set Up
-    fig = plt.figure(figsize=(4,4))
+    fig = plt.figure(figsize=(4, 4))
     ax = fig.add_subplot(111, projection='3d')
     topJ = _rnt(maxJ)
     botJ = _rnt(minJ)
