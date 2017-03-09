@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
- 
 #%% Imports
 from math import floor, sqrt, ceil
 from os.path import exists
 
-from colorspacious import cspace_convert
+import colorspacious.cspace_convert as convert
 import matplotlib.cm as cm # Used with eval()
 from mpl_toolkits.mplot3d import Axes3D # Used to make 3D axes
 import matplotlib.pyplot as plt
@@ -25,57 +24,62 @@ CMAPS = ['Accent', 'Blues', 'BrBG', 'BuGn', 'BuPu', 'CMRmap', 'Dark2', 'GnBu',
          'winter']
 CSPACE1 = 'sRGB1'
 CSPACE2 = 'CAM02-UCS'
-FLABEL = 20 # font size for labels (title and axis labels)
-FAX = 16 # font size for numbers on axes
+FLABEL = 20  # font size for labels (title and axis labels)
+FAX = 16  # font size for numbers on axes
 
 #%% Colormap Processing Functions
 
+
 def _check_cmap(cmap):
-    ''' 
+    '''
     Checks passed cmap name. If it is invalid, throws ValueError.
     Otherwise, it does nothing.
-    
+
     To use a custom-made colormap, save it to a .npy file then use the
     path and file name (e.g. 'path\example' for path\example.npy') as
-    the cmap variable name.    
-    
+    the cmap variable name.
+
     A name is considered invalid when not included in the CMAPS
     variable and a .npy file with its name could not be found. This
     list is manually created so it could be out of date depending on
     the time of this code's release.
     '''
+
     if cmap is None or cmap not in CMAPS:
-        if not exists(cmap + '.npy'):   
+        if not exists(cmap + '.npy'):
             raise ValueError(cmap + ' not a valid colormap name.')
     return
-    
+
+
 def _find_J_bounds(j, a, b, maxJ, passed):
     '''
     Tests J' values against a'b' pairs to determine the max range,
     within the range given by [j, maxj], of J's that can be used with
     this pair. Recursive function.
-    
+
     All J'a'b' pairs will convert to a RGB value but not all of these
     values fall within normal color space so they are tested to be
     between 0 and 255.
     '''
-    test_rgb = cspace_convert([j,a,b], CSPACE2, CSPACE1) * 255
+
+    test_rgb = convert([j, a, b], CSPACE2, CSPACE1) * 255
     if _valid_rgb(test_rgb[0]) and _valid_rgb(test_rgb[1]) and \
-        _valid_rgb(test_rgb[2]):
+       _valid_rgb(test_rgb[2]):
         passed.append(j)
     if j < maxJ:
-        passed = _find_J_bounds(j+1, a, b, maxJ, passed)
+        passed = _find_J_bounds(j + 1, a, b, maxJ, passed)
     return passed
+
 
 def find_J_bounds(data, report=True):
     '''
     Takes in colormap name or J'a'b' values and finds the maximum and
     minumum J' values that all a'b' pairs fit with. This has to be
     done since the CAM02-UCS colorspace is not a perfect square.
-    
+
     Invalid colormap names throw a ValueError. Refer to
     _check_cmap for more information.
-    
+
     Parameters
     -----------
     data: str or ndarray
@@ -83,7 +87,7 @@ def find_J_bounds(data, report=True):
     report: boolean
         Decides whether results should be printed to the console.
         Default value is True.
-        
+
     Returns
     -----------
     minJ : int
@@ -91,45 +95,45 @@ def find_J_bounds(data, report=True):
     maxJ : int
         Highest J' value that works with all a'b' pairs
     '''
-    
-    # Read in J'a'b' values from variable directly or generate them    
+
+    # Read in J'a'b' values from variable directly or generate them
     if type(data) == str:
         _, m = get_rgb_jab(data)
     else:
         m = np.copy(data)
-    
-    # Initial J' bounds    
+
+    # Initial J' bounds
     minJ = 0
     maxJ = 100
-    
+
     # Test each a'b' pair for their max and min J'
     for i in range(m.shape[1]):
-        passed = _find_J_bounds(minJ, m[1,i], m[2,i], maxJ, [])
+        passed = _find_J_bounds(minJ, m[1, i], m[2, i], maxJ, [])
         if len(passed) == 0:
             if report:
                 print 'These values do not fit in one J region.'
             return None, None
         minJ = min(passed)
         maxJ = max(passed)
-    
+
     if report:
         print 'Passed: ' + str([minJ, maxJ])
     return minJ, maxJ
-    
-# Makes RGB matrix and converts it to J'a'b' values
+
+
 def get_rgb_jab(cmap):
     '''
     Accepts cmap name and creates its corresponding RGB and J'a'b'
     matrices.
-    
+
     Invalid colormap names throw a ValueError. Refer to
     _check_cmap for more information.
-    
+
     Parameters
     -----------
     cmap: string
         Colormap name
-    
+
     Returns
     -----------
     rgb : 3 x 256 ndarray
@@ -137,9 +141,10 @@ def get_rgb_jab(cmap):
     jab : 3 x 256 ndarray
         J'a'b' values corresponding to each RGB value
     '''
+
     _check_cmap(cmap)
-    
-    # Get RGB Values    
+
+    # Get RGB Values
     if cmap in CMAPS:
         rgb = np.zeros((3, 256))
         c = eval('cm.' + cmap)
@@ -147,22 +152,23 @@ def get_rgb_jab(cmap):
             rgb[:, i] = c(i)[:-1]
     else:
         rgb = np.load(cmap + '.npy').T
-        
+
     # Convert RGB -> J'a'b'
     jab = np.zeros(rgb.shape)
     for i in range(rgb.shape[1]):
-        jab[:, i] = cspace_convert(rgb[:,i], CSPACE1, CSPACE2)
-        
+        jab[:, i] = convert(rgb[:, i], CSPACE1, CSPACE2)
+
     return rgb, jab
 
 #%% Image Processing Functions
+
 
 def _adjust_bounds(a, minimum, maximum):
     '''
     Takes in an array and adjusts all values to be between the min and
     max values. Relative magnitude does not change (i.e., numbers still
     keep their place in the overall order of min to max values).
-    
+
     Parameters
     -----------
     a : array
@@ -171,7 +177,7 @@ def _adjust_bounds(a, minimum, maximum):
         Minimum value for new array
     maximum : int
         Maximum value for new array
-    
+
     Returns
     -----------
     new_array : ndarray
@@ -181,9 +187,10 @@ def _adjust_bounds(a, minimum, maximum):
     r = maximum - minimum
     new_array = np.copy(a)
     mult = float(r) / float(np.max(new_array) - np.min(new_array))
-    new_array *= mult # Change data range
-    new_array += minimum - np.min(new_array) # Start at min value
+    new_array *= mult  # Change data range
+    new_array += minimum - np.min(new_array)  # Start at min value
     return new_array
+
 
 def bound(a, high, low):
     '''
@@ -192,10 +199,10 @@ def bound(a, high, low):
     to equal the low value and values that are larger than the high
     value are set to equal the high value. Numbers already in this
     range are not changed.
-    
+
     It helps to use the normalize function first to have values based
     on their std. dev. so outliers can be easily dealt with.
-    
+
     Parameters
     -----------
     a : array
@@ -204,16 +211,18 @@ def bound(a, high, low):
         Upper bound
     low : float
         Lower bound
-    
+
     Returns
     -----------
     new_array : array
         Bounded array. Same size as the original array.
     '''
+
     new_array = np.copy(a)
     new_array[new_array > high] = high
     new_array[new_array < low] = low
     return new_array
+
 
 def mix_images(img1, img2, cmap, high, low, name=None, maprevolve=False):
     '''
@@ -221,17 +230,17 @@ def mix_images(img1, img2, cmap, high, low, name=None, maprevolve=False):
     not valid if the colormap itself is not valid or if each a'b' pair
     can not cycle through a range of J' values. See find_J_bounds for
     more information.
-    
+
     Next, plots the colormap with all possible J' values for each a'b'
     pair. Can do a full 3D rotation if needed but this makes
     computing time about 10X longer.
-    
+
     Lastly, creates a new image with colors corresponding to img1
     values and lightness values corresponding to img2.
-    
+
     Invalid colormap names throw a ValueError. Refer to
     _check_cmap for more information.
-    
+
     Parameters
     -----------
     img1 : array
@@ -248,14 +257,14 @@ def mix_images(img1, img2, cmap, high, low, name=None, maprevolve=False):
         this and then colored black in the final image (as background)
     name : string
         Name of file to be saved to. Make sure to include the file type
-        (e.g. .png, .pdf). If name is None, the file will not be saved. 
+        (e.g. .png, .pdf). If name is None, the file will not be saved.
         Default value is None.
     maprevolve : boolean
         Decides whether full 3D rotation images will be plotted and
         saved for the 3D colormap plot. Extends total computation time
         about 10X. Is considered False is name is None. Default value
         is False.
-        
+
     Returns
     -----------
     img1_rgb : ndarray
@@ -265,75 +274,83 @@ def mix_images(img1, img2, cmap, high, low, name=None, maprevolve=False):
     new_rgb : ndarray
         Mixed image
     '''
+
     # Find J bounds to use on image (if possible)
     cmap_rgb, cmap_jab = get_rgb_jab(cmap)
     minJ, maxJ = find_J_bounds(cmap_jab, report=False)
-    
+
     # Case 1: Colormap failed.
     if minJ is None:
         print 'Colormap failed. Try a different one!'
         return None, None, None, None
-    
+
     # Case 2: Colormap passed! Mixin' time!
     else:
-        
+
         plot_3D_colormap(cmap_jab, minJ, maxJ, name=name,
                          maprevolve=maprevolve)
-        
+
         # Initialize
         img1_rgb = np.zeros((img1.shape[0], img1.shape[1], 3), dtype=np.uint8)
         img1_jab = np.zeros((img1.shape[0], img1.shape[1], 2))
         img1_iso = np.zeros(img1_rgb.shape, dtype=np.uint8)
         new_rgb = np.zeros(img1_rgb.shape, dtype=np.uint8)
-        
+
         # Save RGB & J'a'b' values corresponding to colormap
         for i in range(img1.shape[0]):
             for j in range(img1.shape[1]):
-                value = int(round((img1[i,j]-low) * 255 / (high-low)))
+                value = int(round((img1[i, j] - low) * 255 / (high - low)))
                 trgb = cmap_rgb[:, value]
                 tjab = cmap_jab[:, value]
-                img1_rgb[i, j, :] = [trgb[0]*255, trgb[1]*255, trgb[2]*255]
+                img1_rgb[i, j, :] = [trgb[0] * 255, trgb[1] * 255,
+                                     trgb[2] * 255]
                 img1_jab[i, j, :] = [tjab[1], tjab[2]]
-        
+
         # Combine a' & b' values of Img1 with J' of Img2
         j_values = _adjust_bounds(img2, minJ, maxJ)
         for i in range(img1.shape[0]):
             for j in range(img1.shape[1]):
-                if img1[i,j] > low:
+                if img1[i, j] > low:
                     a = img1_jab[i, j, 0]
                     b = img1_jab[i, j, 1]
-                    img1_iso[i, j, :] = cspace_convert([(maxJ+minJ)/2,a,b], \
-                        CSPACE2, CSPACE1) * 255
-                    new_rgb[i, j, :] = cspace_convert([j_values[i,j],a,b], \
-                        CSPACE2, CSPACE1) * 255
-        
+                    img1_iso[i, j, :] = convert([(maxJ + minJ) / 2, a, b],
+                                                CSPACE2, CSPACE1) * 255
+                    new_rgb[i, j, :] = convert([j_values[i, j], a, b],
+                                               CSPACE2, CSPACE1) * 255
+
         return img1_rgb, img1_iso, new_rgb
+
 
 def normalize(a):
     '''
     Normalize array so the average is at 0 and the std. dev. is 1.
-    
+
     Parameters
     -----------
     a : array
         Array to be normalized
-    
+
     Returns
     -----------
     new_array : array
         Normalized array. Same size as the original array.
     '''
+
     new_array = np.copy(a)
-    return (new_array-np.average(new_array)) / np.std(new_array)
+    return (new_array - np.average(new_array)) / np.std(new_array)
 
 #%% Math Functions
+
 
 def _find_distance(p1, p2):
     '''
     Finds the distance between two 3D points
     '''
-    return sqrt((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2 + (p2[2]-p1[2])**2)
-    
+
+    val = (p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2 + (p2[2] - p1[2]) ** 2
+    return sqrt(val)
+
+
 def _rnt(num, shift='None'):
     '''
     Rounds number to the nearest 10 digit. Returned as int.
@@ -345,6 +362,7 @@ def _rnt(num, shift='None'):
     else:
         return int(round(num / 10.0) * 10)
 
+
 def _valid_rgb(num):
     '''
     Returns whether or not the number is between 0 and 255
@@ -353,17 +371,18 @@ def _valid_rgb(num):
 
 #%% Plotting Functions
 
+
 def _plot_3D(ax, m, rgb, lims, ticks):
     '''
     Plots J'a'b' values of colormap in 3D space. Points are colored
     with their corresponding RGB value.
     '''
-    
+
     # Plot
     for i in range(m.shape[1]):
         c = tuple(rgb[:, i])
-        ax.scatter(m[1,i], m[2,i], m[0,i], c=c, alpha=0.3, s=40, lw=0)
-    
+        ax.scatter(m[1, i], m[2, i], m[0, i], c=c, alpha=0.3, s=40, lw=0)
+
     # Format
     labels = ['J\'', 'a\'', 'b\'']
     ax.set_xlabel(labels[1], fontsize=FLABEL)
@@ -379,11 +398,12 @@ def _plot_3D(ax, m, rgb, lims, ticks):
     plt.yticks(fontsize=FAX)
     return
 
+
 def plot_3D_colormap(jab, minJ, maxJ, name=None, maprevolve=False):
     '''
     Plots colormap, showing all available J'a'b' values through
     CAM02-UCS space.
-    
+
     Parameters
     -------------
     jab : ndarray
@@ -395,39 +415,40 @@ def plot_3D_colormap(jab, minJ, maxJ, name=None, maprevolve=False):
         Maximum J value found to work with all a'b' pairs
     name : string
         Name of file to be saved to. Make sure to include the file type
-        (e.g. .png, .pdf). If name is None, the file will not be saved. 
+        (e.g. .png, .pdf). If name is None, the file will not be saved.
         Default value is None.
     maprevolve : boolean
         Decides whether full 3D rotation images will be plotted and
         saved for the 3D colormap plot. Extends total computation time
         about 10X. Is considered False is name is None. Default value
         is False.
-        
+
     Returns
     -----------
     None.
-    '''    
+    '''
+
     m = np.copy(jab)
-    
+
     # Set Up
     fig = plt.figure(figsize=(4, 4))
     ax = fig.add_subplot(111, projection='3d')
     topJ = _rnt(maxJ)
     botJ = _rnt(minJ)
-    topa = _rnt(max(m[1,:]), shift='upper')
-    bota = _rnt(min(m[1,:]), shift='lower')
-    topb = _rnt(max(m[2,:]), shift='upper')
-    botb = _rnt(min(m[2,:]), shift='lower')
+    topa = _rnt(max(m[1, :]), shift='upper')
+    bota = _rnt(min(m[1, :]), shift='lower')
+    topb = _rnt(max(m[2, :]), shift='upper')
+    botb = _rnt(min(m[2, :]), shift='lower')
     lims = [bota, topa, botb, topb, botJ, topJ]
-    
+
     # Find RGBs for each possible J
-    for J in range(minJ, maxJ+1):
+    for J in range(minJ, maxJ + 1):
         m[0, :] = J
         rgb = np.zeros(m.shape)
         for col in range(m.shape[1]):
-            rgb[:, col] = cspace_convert(m[:,col], CSPACE2, CSPACE1)
+            rgb[:, col] = convert(m[:, col], CSPACE2, CSPACE1)
         _plot_3D(ax, m, rgb, lims, lims)
-        
+
     # Plot and save rotating image
     if name is not None and maprevolve:
         for a in np.arange(0, 360, 30):
@@ -436,96 +457,100 @@ def plot_3D_colormap(jab, minJ, maxJ, name=None, maprevolve=False):
             plt.savefig(name + 'angle=' + str(a) + '.png')
     plt.show()
     return
-    
+
+
 def plot_colormap(cmap):
     '''
     Plots the colorbar of a given colormap.
-    
+
     Invalid colormap names throw a ValueError. Refer to
     _check_cmap for more information.
     '''
+
     _check_cmap(cmap)
-    
+
     # Register colormap if not in pyplot
     if cmap not in CMAPS:
         rgb = np.load(cmap + '.npy').T
         for i in range(rgb.shape[1]):
-            c = tuple(rgb[:,i])
-            plt.scatter([i]*50, np.linspace(0,0.5,50), c=c, lw=0)
+            c = tuple(rgb[:, i])
+            plt.scatter([i] * 50, np.linspace(0, 0.5, 50), c=c, lw=0)
             plt.axis([0, 256, 0, 0.5])
     else:
-        array = np.vstack((np.linspace(0,1,256), np.linspace(0,1,256)))
+        array = np.vstack((np.linspace(0, 1, 256), np.linspace(0, 1, 256)))
         plt.imshow(array, aspect='20', cmap=plt.get_cmap(cmap))
     plt.axis('off')
     return
+
 
 def plot_colormap_info(cmap, name=None):
     '''
     Takes in the name of a colormap and plots its colorbar, distance
     between each point on the map, and its 3D J'a'b' map with each
     point colored with its corresponding RGB value.
-    
+
     Invalid colormap names throw a ValueError. Refer to
     _check_cmap for more information.
-    
+
     Parameters
     -----------
     cmap: string
         Colormap name
     name : string
         Name of file to be saved to. Make sure to include the file type
-        (e.g. .png, .pdf). If name is None, the file will not be saved. 
+        (e.g. .png, .pdf). If name is None, the file will not be saved.
         Default value is None.
-    
+
     Returns
     -----------
     None.
     '''
 
     rgb, m = get_rgb_jab(cmap)
-    
+
     # Set up for figure
-    fig = plt.figure(figsize=(6,12))    
-    
+    fig = plt.figure(figsize=(6, 12))
+
     # Show colorbar
     ax = plt.subplot(411)
     plot_colormap(cmap)
     if cmap not in CMAPS:
         ax.set_aspect(75)
-    
+
     # 2D Plot - J'a'b' values
     ax = fig.add_subplot(412)
     _plot_jab(m)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    
+
     # 2D Plot - Distance Between Points (Perceptual Deltas)
     ax = fig.add_subplot(413)
     _plot_pd(m)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    
+
     # 3D Plot - Colormap Representation in CAM02-UCS
     ax = fig.add_subplot(414, projection='3d')
     lims = [-32.3, 41.6, -39.3, 35.7, 0, 100]
     ticks = [-30, 30, -30, 30, 0, 100]
     _plot_3D(ax, m, rgb, lims, ticks)
-    
+
     # Save figure
     if name is not None:
         plt.savefig(name, transparent=True)
-    
+
     plt.show()
     return
+
 
 def _plot_jab(m):
     '''
     Plots J'a'b' values
     '''
     plt.title('CAM02-UCS Colorspace', fontsize=FLABEL)
-    j, = plt.plot(m[0,:], 'b', lw=2, label='J\'')
-    a, = plt.plot(m[1,:], 'r', lw=2, label='a\'')
-    b, = plt.plot(m[2,:], 'g', lw=2, label='b\'')
+    j, = plt.plot(m[0, :], 'b', lw=2, label='J\'')
+    a, = plt.plot(m[1, :], 'r', lw=2, label='a\'')
+    b, = plt.plot(m[2, :], 'g', lw=2, label='b\'')
     plt.tick_params(which='both', left='off', right='off')
     plt.xticks([])
     plt.yticks([-40, 0, 40, 80], fontsize=FAX)
@@ -533,14 +558,15 @@ def _plot_jab(m):
     plt.legend(handles=[j, a, b], loc='lower right', fontsize=FAX)
     return
 
+
 def _plot_pd(m):
     '''
     Plots perceptual deltas as shown in https://bids.github.io/colormap
     '''
     plt.title('Perceptual Deltas', fontsize=FLABEL)
     d = np.zeros(m.shape[1])
-    for i in range(m.shape[1]-1):
-        d[i] = _find_distance(m[:,i], m[:,i+1])
+    for i in range(m.shape[1] - 1):
+        d[i] = _find_distance(m[:, i], m[:, i + 1])
     ymax = max(3, np.max(d[1:-1]))
     plt.xlim(right=0, left=255)
     plt.ylim(bottom=0, top=ymax)
@@ -550,8 +576,3 @@ def _plot_pd(m):
     plt.tick_params(which='both', bottom='off', right='off', top='off')
     plt.ylabel('Distnce to Next Point', fontsize=FLABEL)
     return
-
-#%% Main
-if __name__=='__main__':
-    print('Colormap Python Module')
-    print('Author: ' + __author__ + '\n')
