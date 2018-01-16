@@ -8,12 +8,12 @@ Utilities for working in color vision deficiency (CVD) space
 #%% Imports
 import numpy as np
 
-import cmaputil as cmap_mod
+import cmaputil as cmu
 
 #%% Global Variables
 SEV = 100
-CSPACE1 = cmap_mod.CSPACE1
-CSPACE2 = cmap_mod.CSPACE2
+CSPACE1 = cmu.CSPACE1
+CSPACE2 = cmu.CSPACE2
 CVD_TYPE = 'deuteranomaly'
 
 #%% Functions
@@ -40,25 +40,25 @@ def get_cvd(data, cvd_type=CVD_TYPE, severity=100):
         Colormap data in CVD space
     '''
 
-    rgb,_ = cmap_mod.get_rgb_jab(data, calc_jab=False)
+    rgb,_ = cmu.get_rgb_jab(data, calc_jab=False)
     cvd_space = {'name': 'sRGB1+CVD', 'cvd_type': cvd_type,
                  'severity': severity}
-    cvd = cmap_mod.convert(rgb, cvd_space, CSPACE1)
+    cvd = cmu.convert(rgb, cvd_space, CSPACE1)
     return cvd
 
 def _iter_make_linear(jab):
 
     # Linearize a' and b' changes
-    jab1 = cmap_mod.make_linear(np.copy(jab))
+    jab1 = cmu.make_linear(np.copy(jab))
 
     # Convert J'a'b' values to RGB values and clip
-    rgb1 = np.clip(cmap_mod.convert(jab1, CSPACE2, CSPACE1), 0, 1) 
+    rgb1 = np.clip(cmu.convert(jab1, CSPACE2, CSPACE1), 0, 1) 
 
     # Convert RGB to CVD RGB space
     rgb2 = get_cvd(rgb1)
 
     # Bring back to to J'a'b'
-    jab2 = cmap_mod.convert(rgb2, CSPACE1, CSPACE2)
+    jab2 = cmu.convert(rgb2, CSPACE1, CSPACE2)
 
     # Force to have same J' as original J'a'b' array
     jab2[0, :] = jab1[0, :]
@@ -85,5 +85,5 @@ def iter_make_linear(jab, l=100000):
 
     jab = np.copy(jab)
     jab = _iter_make_linear(_iter_make_linear(jab))
-    rgb = cmap_mod.convert(jab, CSPACE2, CSPACE1)
+    rgb = cmu.convert(jab, CSPACE2, CSPACE1)
     return rgb, jab

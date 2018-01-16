@@ -59,9 +59,29 @@ def _check_cmap(cmap):
             raise ValueError(cmap + ' not a valid colormap name.')
     return
 
-def create_isoluminant_map(cmap):
+def create_isoluminant_map(data):
+    '''
+    Takes in a colormap (name or RGB values) and cycles through all
+    possible intensity values that are valid for all a',b' pairs
+    present in the original colormap. Full matrix returned can be
+    plotted to view range of intensities valid for that colormap as a
+    whole or a single colormap within the returned matrix (selected
+    using m[:, :, x], which represents one isoluminant colormap) can be
+    plotted alone.
+    
+    Parameters
+    -----------
+    data: str or ndarray
+        Colormap name or RGB values
 
-    _, jab = get_rgb_jab(cmap)
+    Returns
+    -----------
+    rgb: ndarray, dimensions = (3, 256, X)
+        Isoluminant colormap matrix containing X isoluminant colormaps
+    
+    '''
+
+    _, jab = get_rgb_jab(data)
     minJ, maxJ = find_J_bounds(jab, report=False)
     
     # Exit if isoluminant map failed
@@ -69,10 +89,10 @@ def create_isoluminant_map(cmap):
         return None
     
     # Continue if passed
-    h = maxJ - minJ
+    h = int(maxJ) - int(minJ)
     rgb = np.zeros((jab.shape[0], jab.shape[1], h))
     for j in range(h):
-        jab[0, :] = minJ + j
+        jab[0, :] = int(minJ) + j
         rgb[:, :, j] = convert(jab, CSPACE2, CSPACE1)
     
     return rgb
@@ -87,8 +107,7 @@ def _find_J_bounds(j, a, b):
     values fall within normal color space so they are tested to be
     between 0 and 255.
     '''
-
-#    test_rgb = convert(np.asarray([j, a, b]).T, CSPACE2, CSPACE1)
+    
     test_rgb = cspace_convert([j, a, b], CSPACE2, CSPACE1)
     
     if _valid_rgb(test_rgb[0]) and _valid_rgb(test_rgb[1]) and \
@@ -129,15 +148,25 @@ def find_J_bounds(data, report=True):
         m = np.copy(data)
     
     # Test each a'b' pair for their max and min J'
-    if len(m.T) > 3:
-        for i in range(len(m.T)):
-            passed = _find_J_bounds(minJ, m[1, i], m[2, i], maxJ, [])
-            if len(passed) == 0:
-                if report:
-                    print 'These values do not fit in one J region.'
-                return None, None
-            minJ = min(passed)
-            maxJ = max(passed)
+    minJ = 0
+    maxJ = 100
+    if m.shape[1] > 3:
+        for i in range(m.shape[1]):
+            a = m[1, i]
+            b = m[2, i]
+            passed = []
+            J = minJ
+            while J <= maxJ:
+                if _find_J_bounds(J, a, b):
+                    passed.append(J)
+                while _find_J_bounds(J + 5, a, b):
+                    passed.append(J)
+                    J += 5
+                J += 0.1
+            if len(passed) > 0:
+                minJ = max(minJ, min(passed))
+                maxJ = min(maxJ, max(passed))
+        
     else:
         a = m[1]
         b = m[2]
@@ -158,6 +187,26 @@ def find_J_bounds(data, report=True):
     return minJ, maxJ
 
 def convert(data, from_space, to_space):
+    '''
+    Takes a single color value or matrix of values and converts to the
+    desired colorspace
+
+    Parameters
+    -----------
+    data: 3 x COL array
+        Colormap name OR array with complete color data. Invalid
+        colormap names throw a ValueError. Refer to _check_cmap for
+        more information.
+    from_space: str
+        Colorspace the current color value(s) reside(s) in
+    to_space: str
+        Colorspace to convert the color value(s) to
+
+    Returns
+    -----------
+    n : 3 x COL ndarray
+        RGB values for each converted color value
+    '''
     if from_space == CSPACE1:
         data = np.clip(data, 0, 1)
     new = cspace_convert(data.T, from_space, to_space).T
@@ -414,21 +463,6 @@ def _find_distance(p1, p2):
     for i in range(len(p1)):
         val += (p2[i] - p1[i]) ** 2
     return sqrt(val)
-
-
-# In beta
-def _make_puniform(cmap, rgb=None):
-    rgb, jab = get_rgb_jab(cmap)
-    
-#    x = np.linspace(0, 255, 256)
-#    for i in range(jab.shape[0]):
-#        jab[i, :] = np.interp(x, x, jab[i, :])
-#    jab = interpn(jab)
-    
-    for j in range(jab.shape[1]):
-        rgb[:, j] = convert(jab[:, j], CSPACE2, CSPACE1)
-    
-    return rgb, jab
     
 def _rnt(num, shift='None'):
     '''
