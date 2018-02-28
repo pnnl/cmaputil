@@ -17,14 +17,14 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 
 import cmaputil as cmu
-import cvdutil as cvu
+import cmaputil.cvdutil as cvu
 
 FLABEL = 20
 FAX = 16
 
 #%% Get iteration data
 cmap = 'viridis' # The optimized version of this colormap is cividis!
-    
+
 # Get original RGB/Jab
 t = time()
 rgb1, jab1 = cmu.get_rgb_jab(cmap)
