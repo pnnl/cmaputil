@@ -17,7 +17,7 @@ from scipy.spatial import ConvexHull, Delaunay
 from viscm.gui import sRGB_gamut_Jp_slice
 
 import cmaputil as cmu
-import cvdutil as cvu
+import cmaputil.cvdutil as cvu
 
 #%% Globals
 FLABEL = 20
@@ -40,81 +40,81 @@ def convex_hull_volume(pts):
 
 # Quick help function to add J'a'b' (from a RGB value) to the given set
 def add(rgb, severity, jab_set, cvd_type='deuteranomaly'):
-    
+
     if severity is None: # Full trichromatic vision
         jab = cmu.convert(rgb, 'sRGB1', UNIFORM_SPACE)
-    
+
     else: # Simulate CVD
         jab = cmu.convert(cvu.get_cvd(rgb, severity=severity, cvd_type=cvd_type), 'sRGB1', UNIFORM_SPACE)
-    
+
     # Add to set
     jab_set.add(tuple(jab))
 
 def gen_ab_spaces(Jps, sevs):
-    
+
     # Initialize
     cvdd = []
     ab_values = set()
     cvdd_ab_values = [set(), set(), set(), set(), set(), set(), set(), set(), set(), set(), set()]
-    
+
     t = time()
     for Jp in Jps:
-        
+
         # Get a'b' for this J'
         ab_space = sRGB_gamut_Jp_slice(Jp, UNIFORM_SPACE)
-        
+
         # Iterate through each a',b' pair
         for i in range(ab_space.shape[0]): # b'
             for j in range(ab_space.shape[1]): # a'
-            
+
                 # Check if this J'a'b' converts to a RGB value
                 if np.sum(ab_space[i, j, :]) > 0:
-                    
+
                     rgb = ab_space[i, j, :3]
                     add(rgb, None, ab_values)
-                    
+
                     # Find the RGB for each severity
                     for sev in sevs:
                         add(rgb, sev, cvdd_ab_values[sev / 10])
-    
+
         # Report time taken for this iteration
         print '%.2f' % (time() - t)
         t = time()
-    
+
     # Calculate percent areas
     ab_values_temp = np.vstack({tuple(row) for row in np.asarray(list(ab_values))})
     normal_area = convex_hull_volume(ab_values_temp)
-    
-    for sev in sevs:  
+
+    for sev in sevs:
         cvdd_ab_values_temp = np.vstack({tuple(row) for row in np.asarray(list(cvdd_ab_values[sev / 10]))})
         cvdd.append(convex_hull_volume(cvdd_ab_values_temp) / normal_area * 100)
-        
+
     return cvdd, ab_values, cvdd_ab_values
-    
+
 def plot_ab_surfaces(full_color_vision_ab, cvd_ab, severity=100):
-    
+
     ab_xy = np.asarray(list(full_color_vision_ab))
     cvd_xy = np.asarray(list(cvd_ab[severity / 10]))
-    
+
     labels = ['J\'', 'a\'', 'b\'']
     pairs = [[1, 0], [2, 0], [2, 1]]
-    
+
     for p in pairs:
-        
+
         plt.figure(figsize=(6,6))
-        
+
         plt.scatter(ab_xy[:, p[0]], ab_xy[:, p[1]], c='k', lw=0)
         plt.scatter(cvd_xy[:, p[0]], cvd_xy[:, p[1]], c='gray', lw=0)
-        
+
         # Format
         if p[0] > 0: # a' or b' bounds
             xmin = -50; xmax = 50;
         else: # J' bounds
             xmin = 0; xmax = 100;
-            
+
         if p[1] > 0:
             ymin = -50; ymax = 50;
-            
+
         else:
             ymin = 0; ymax = 100;
         plt.xticks([])
