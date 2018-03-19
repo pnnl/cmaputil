@@ -6,6 +6,7 @@ Utilities for working with standard colormaps
 (C) 2017 - Pacific Northwest National Laboratory
 """
 #%% Imports
+from __future__ import print_function
 from math import floor, sqrt, ceil
 from os.path import exists
 
@@ -59,6 +60,7 @@ def _check_cmap(cmap):
             raise ValueError(cmap + ' not a valid colormap name.')
     return
 
+
 def create_isoluminant_map(data):
     '''
     Takes in a colormap (name or RGB values) and cycles through all
@@ -68,7 +70,7 @@ def create_isoluminant_map(data):
     whole or a single colormap within the returned matrix (selected
     using m[:, :, x], which represents one isoluminant colormap) can be
     plotted alone.
-    
+
     Parameters
     -----------
     data: str or ndarray
@@ -78,24 +80,25 @@ def create_isoluminant_map(data):
     -----------
     rgb: ndarray, dimensions = (3, 256, X)
         Isoluminant colormap matrix containing X isoluminant colormaps
-    
+
     '''
 
     _, jab = get_rgb_jab(data)
     minJ, maxJ = find_J_bounds(jab, report=False)
-    
+
     # Exit if isoluminant map failed
     if minJ is None:
         return None
-    
+
     # Continue if passed
     h = int(maxJ) - int(minJ)
     rgb = np.zeros((jab.shape[0], jab.shape[1], h))
     for j in range(h):
         jab[0, :] = int(minJ) + j
         rgb[:, :, j] = convert(jab, CSPACE2, CSPACE1)
-    
+
     return rgb
+
 
 def _find_J_bounds(j, a, b):
     '''
@@ -107,9 +110,9 @@ def _find_J_bounds(j, a, b):
     values fall within normal color space so they are tested to be
     between 0 and 255.
     '''
-    
+
     test_rgb = cspace_convert([j, a, b], CSPACE2, CSPACE1)
-    
+
     if _valid_rgb(test_rgb[0]) and _valid_rgb(test_rgb[1]) and \
        _valid_rgb(test_rgb[2]):
         return True
@@ -146,10 +149,11 @@ def find_J_bounds(data, report=True):
         _, m = get_rgb_jab(data)
     else:
         m = np.copy(data)
-    
+
     # Test each a'b' pair for their max and min J'
     minJ = 0
     maxJ = 100
+    # possible bug here when len(m.shape) == 1?
     if m.shape[1] > 3:
         for i in range(m.shape[1]):
             a = m[1, i]
@@ -166,7 +170,7 @@ def find_J_bounds(data, report=True):
             if len(passed) > 0:
                 minJ = max(minJ, min(passed))
                 maxJ = min(maxJ, max(passed))
-        
+
     else:
         a = m[1]
         b = m[2]
@@ -183,8 +187,9 @@ def find_J_bounds(data, report=True):
         maxJ = max(passed)
 
     if report:
-        print 'Passed: ' + str([minJ, maxJ])
+        print('Passed: ' + str([minJ, maxJ]))
     return minJ, maxJ
+
 
 def convert(data, from_space, to_space):
     '''
@@ -214,6 +219,7 @@ def convert(data, from_space, to_space):
         new = np.clip(new, 0, 1)
     return new
 
+
 def _get_rgb(cmap):
     # Get RGB Values
     if cmap in CMAPS:
@@ -226,6 +232,7 @@ def _get_rgb(cmap):
         if rgb.shape[0] != 3:
             rgb = rgb.T
     return rgb
+
 
 def get_rgb_jab(data, calc_jab=True):
     '''
@@ -258,11 +265,11 @@ def get_rgb_jab(data, calc_jab=True):
         rgb = data
 
     rgb = np.clip(rgb, 0, 1)
-    
+
     if calc_jab:
         # Convert RGB -> J'a'b'
         jab = convert(rgb, CSPACE1, CSPACE2)
-        
+
         # Ensure J' is valid (between 0 and 100)
         jab[0, :] = np.clip(jab[0, :], 0, 100)
     else:
@@ -270,9 +277,8 @@ def get_rgb_jab(data, calc_jab=True):
 
     return rgb, jab
 
+
 #%% Image Processing Functions
-
-
 def _adjust_bounds(a, minimum, maximum):
     '''
     Takes in an array and adjusts all values to be between the min and
@@ -391,7 +397,7 @@ def mix_images(img1, img2, cmap, high, low, name=None, maprevolve=False):
 
     # Case 1: Colormap failed.
     if minJ is None:
-        print 'Colormap failed. Try a different one!'
+        print('Colormap failed. Try a different one!')
         return None, None, None, None
 
     # Case 2: Colormap passed! Mixin' time!
@@ -449,21 +455,21 @@ def normalize(a):
     new_array = np.copy(a)
     return (new_array - np.average(new_array)) / np.std(new_array)
 
+
 #%% Math Functions
-
-
 def _find_distance(p1, p2):
     '''
     Finds the distance between two points. Must be the same length.
     '''
-    
+
     if len(p1) != len(p2):
         return ValueError
     val = 0
     for i in range(len(p1)):
         val += (p2[i] - p1[i]) ** 2
     return sqrt(val)
-    
+
+
 def _rnt(num, shift='None'):
     '''
     Rounds number to the nearest 10 digit. Returned as int.
@@ -483,9 +489,8 @@ def _valid_rgb(num, e=0.001):
     '''
     return np.isfinite(num) and num < (1 + e) and num > -e
 
+
 #%% Plotting Functions
-
-
 def _plot_3D(ax, m, rgb, lims, ticks):
     '''
     Plots J'a'b' values of colormap in 3D space. Points are colored
@@ -572,14 +577,15 @@ def plot_3D_colormap(jab, minJ, maxJ, name=None, maprevolve=False):
             plt.savefig(name + 'angle=' + str(a) + '.png')
     plt.show()
     return
-    
+
+
 def plot_colormap(data, iso=False, ax=None):
     '''
     Plots the colorbar of a given colormap.
-    
+
     Invalid colormap names throw a ValueError. Refer to
     _check_cmap for more information.
-    
+
     Parameters
     -----------
     data: string OR 2-3D array
@@ -590,31 +596,34 @@ def plot_colormap(data, iso=False, ax=None):
     ax: matplotlib ax object (optional)
         Used for adding cmap as a subplot to larger plot. Default is to
         create a new plot.
+
+    Returns
+    -------
     '''
-    
+
     # Colormap name passed in - get RGB values
     if type(data) == str:
         cmap = data
         _check_cmap(cmap)
-        
+
         if iso:
             rgb = create_isoluminant_map(cmap)
         else:
             rgb, _ = get_rgb_jab(cmap)
-    
+
     # RGB values passed in
     else:
         rgb = data
-    
+
     if rgb is None:
         return None
-    
+
     # Create plot
     newfig = ax == None
     if newfig:
         plt.figure(figsize=(6, 6))
         ax = plt.subplot(111)
-    
+
     # RGB values generated, now plot
     if len(rgb.shape) == 2:
         for i in range(rgb.shape[1]):
@@ -627,12 +636,12 @@ def plot_colormap(data, iso=False, ax=None):
             for i in range(rgb.shape[1]):
                 c = tuple(rgb[:, i, j])
                 plt.scatter([i] * y, np.linspace(k * j, k * (j + 1), y), c=c, lw=0)
-    
+
     # Final formatting
     ax.set_aspect(5)
     plt.axis([0, rgb.shape[1], 0, 10])
     plt.axis('off')
-    
+
     return rgb
 
 
@@ -658,7 +667,7 @@ def plot_colormap_info(fig, data, sp=[5, 1, 1], name=None, show=True, leg=False)
     -----------
     None.
     '''
-    
+
     rgb, m = get_rgb_jab(data)
 
     # Set up for figure
@@ -668,7 +677,7 @@ def plot_colormap_info(fig, data, sp=[5, 1, 1], name=None, show=True, leg=False)
     # Show colorbar
     ax = plt.subplot(sp[0], sp[1], sp[2])
     plot_colormap(rgb, ax=ax)
-    
+
     # Show colorbar test
     ax = plt.subplot(sp[0], sp[1], sp[2] + sp[1])
     plt.imshow(test_colormap(rgb, ax=ax))
@@ -700,6 +709,7 @@ def plot_colormap_info(fig, data, sp=[5, 1, 1], name=None, show=True, leg=False)
         plt.show()
     return
 
+
 def _plot_jab(m, leg=False):
     '''
     Plots J'a'b' values
@@ -714,7 +724,7 @@ def _plot_jab(m, leg=False):
     plt.xticks([])
     plt.yticks([-40, 0, 40, 80], fontsize=FAX)
     plt.axis([0, m.shape[1], -40, 100])
-    
+
     if leg:
         plt.legend(handles=[j, a, b], loc='upper left', fontsize=FAX)
 
@@ -729,7 +739,7 @@ def _plot_pd(m, show=True):
     d = np.zeros(m.shape[1] - 1)
     for i in range(m.shape[1] - 1):
         d[i] = _find_distance(m[:, i], m[:, i+1])
-    
+
     if show:
         ymax = max(3, np.max(d))
         plt.xlim(left=1, right=m.shape[1]-1)
@@ -741,7 +751,8 @@ def _plot_pd(m, show=True):
 #    plt.ylabel('Dist. to Next Pt.', fontsize=FLABEL)
 #    plt.axis('off')
     return d
-    
+
+
 def plot_linear_Js(low, high, j1, j2, name=None):
     plt.figure(figsize=(6, 6))
     c1 = (99 / 255.0, 198 / 255.0, 10 / 255.0)
@@ -768,6 +779,7 @@ def plot_linear_Js(low, high, j1, j2, name=None):
         plt.savefig(name, dpi=300)
     plt.show()
 
+
 def _correct_J(low, high, line, m):
     test_upper = [x for x in high - line if x < 0]
     test_lower = [x for x in line - low if x < 0]
@@ -778,14 +790,16 @@ def _correct_J(low, high, line, m):
     else:
         return None
 
+
 def lin_fit(y):
     x = range(256)
     x = np.vstack([x, np.ones(len(x))]).T
     a, _, _, _ = np.linalg.lstsq(x, y)
     return (a * x)[:, 0]
-    
+
+
 def correct_J(m, name=None, delta_slope=1, delta_b=1):
-    
+
     # Get max and min boundaries for each a, b pair
     l = m.shape[1]
     high = np.zeros((l))
@@ -805,7 +819,7 @@ def correct_J(m, name=None, delta_slope=1, delta_b=1):
             if line_fit[0] < line_fit[-1]:
                 line_fit = np.linspace(1, 99, 256)
             else:
-                line_fit = np.linspace(99, 1, 256) 
+                line_fit = np.linspace(99, 1, 256)
     m1[0, :] = line_fit
 
     # Method 2: Maximize change in J
@@ -849,6 +863,7 @@ def correct_J(m, name=None, delta_slope=1, delta_b=1):
     plot_linear_Js(low, high, m1, None, name=name)
     return m1, None
 
+
 # Make jab perceptually uniform
 def make_linear(jab, l=10000):
 
@@ -859,13 +874,13 @@ def make_linear(jab, l=10000):
     new_x = np.linspace(0, 255, l)
     long_a = np.interp(new_x, old_x, jab[1, :])
     long_b = np.interp(new_x, old_x, jab[2, :])
-    
+
     total_length = 0
     for i in range(1, l):
         total_length += _find_distance([long_a[i - 1], long_b[i - 1]],
                                        [long_a[i], long_b[i]])
     d = total_length / 255 # Desired distance between points
-    
+
     # Modify a & b
     jab_ind = 0
     long_ind = 1
@@ -875,7 +890,7 @@ def make_linear(jab, l=10000):
                                 [long_a[long_ind], long_b[long_ind]])
         test_d2 = _find_distance([long_a[long_ind], long_b[long_ind]],
                                 [long_a[long_ind + 1], long_b[long_ind + 1]])
-        
+
         d_this += test_d1
         d_next = d_this + test_d2
         # If the distance to this point is a minima, add. Else, move onto next
@@ -886,6 +901,7 @@ def make_linear(jab, l=10000):
         long_ind += 1
 
     return jab
+
 
 def overlay_colormap(img, cmap_rgb, ax=None, name=None, plot_ready=True):
 #    newfig = ax == None
@@ -913,6 +929,7 @@ def overlay_colormap(img, cmap_rgb, ax=None, name=None, plot_ready=True):
 
     return img_rgb
 
+
 def test_colormap(cmap, ax=None, name=None):
     sin_mag = 8.0
     rgb, _ = get_rgb_jab(cmap)
@@ -927,15 +944,16 @@ def test_colormap(cmap, ax=None, name=None):
     img_rgb = overlay_colormap(img, rgb, ax=ax, name=name)
     return img_rgb
 
+
 def cdps_plot(img, cmap, rgb, num, gslope):
 
     plt.figure(figsize=(4, 4))
-    
+
     img_overlay = overlay_colormap(img, rgb, plot_ready=False)[0, :, :]
     slice_jab = convert(img_overlay.T, CSPACE1, CSPACE2)
-    
+
     overlay_pd = _plot_pd(slice_jab, show=False)
-    
+
     data_pd = np.zeros(img_overlay.shape[0] - 1)
     for i in range(data_pd.shape[0]):
         data_pd[i] = img[0, i + 1] - img[0, i]
@@ -952,15 +970,14 @@ def cdps_plot(img, cmap, rgb, num, gslope):
     ybar = np.sum(y)/len(y)
     ssreg = np.sum((yhat-ybar)**2)
     sstot = np.sum((y - ybar)**2)
-    
+
     # Plot fitted line
     plt.plot(x, yhat, 'gray', lw=2, zorder=-32)
     plt.scatter(x, y, c='k', s=40, zorder=32)
-    
+
     # Final formatting
     plt.xticks([])
     plt.yticks([])
     plt.axis([0, 1, 0, 2])
     plt.title('y = %.2fx + %.2f, R2 = %.3f' % (coeffs[0], coeffs[1], ssreg / sstot))
     plt.show()
-   

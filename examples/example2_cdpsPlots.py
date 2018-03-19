@@ -10,7 +10,7 @@ Can be used to create plots like in Fig 1 and 5 of the paper
 import numpy as np
 
 import cmaputil as cmu
-import cvdutil as cvu
+import cmaputil.cvdutil as cvu
 
 # Globals
 FLABEL = 20
