@@ -153,8 +153,8 @@ def find_J_bounds(data, report=True):
     # Test each a'b' pair for their max and min J'
     minJ = 0
     maxJ = 100
-    # possible bug here when len(m.shape) == 1?
-    if m.shape[1] > 3:
+
+    if len(m.shape) > 1 and m.shape[1] > 3:
         for i in range(m.shape[1]):
             a = m[1, i]
             b = m[2, i]
